@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"errors"
 	"io"
-	"io/fs"
 	"net/http"
 	"os"
 	"strings"
@@ -166,22 +165,22 @@ func extractTempFile() (string, error) {
 		switch header.Typeflag {
 		case tar.TypeDir:
 			if err := os.Mkdir(header.Name, 0755); err != nil {
-				panic(err)
+				return "", err
 			}
 		case tar.TypeReg:
 			outfile, err := os.Create(header.Name)
 			if err != nil {
-				panic(err)
+				return "", err
 			}
 			if _, err := io.Copy(outfile, reader); err != nil {
 				outfile.Close()
-				panic(err)
+				return "", err
 			}
 			if err := outfile.Close(); err != nil {
-				panic(err)
+				return "", err
 			}
 		default:
-			panic("unkown tar")
+			return "", errors.New("unknown tar type")
 		}
 	}
 
