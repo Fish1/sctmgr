@@ -49,7 +49,6 @@ func handleKeyMsg(m Model, msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 			}
 			return m, func() tea.Msg {
 				filename, err := gemanager.Install(m.choices[m.cursor].downloadUrl)
-				panic(filename)
 				if err != nil {
 					panic(err)
 				}

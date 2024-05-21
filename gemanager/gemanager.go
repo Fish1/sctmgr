@@ -2,11 +2,13 @@ package gemanager
 
 import (
 	"archive/tar"
+	"compress/gzip"
 	"encoding/json"
 	"errors"
 	"io"
 	"net/http"
 	"os"
+	"path/filepath"
 	"strings"
 )
 
@@ -116,20 +118,27 @@ func Delete(localUri string) error {
 	return nil
 }
 
-func Install(url string) (string, error) {
-	err := downloadTempFile(url)
+func Install(remote string) (string, error) {
+	err := downloadTempFile(remote)
 	if err != nil {
 		return "", err
 	}
-	filename, err := extractTempFile()
+
+	path, err := extractTempFile()
 	if err != nil {
 		return "", err
 	}
-	return filename, nil
+
+	err = cleanupTempFile()
+	if err != nil {
+		return "", err
+	}
+
+	return path, nil
 }
 
-func downloadTempFile(url string) error {
-	res, err := http.Get(url)
+func downloadTempFile(remote string) error {
+	res, err := http.Get(remote)
 	if err != nil {
 		return err
 	}
@@ -153,36 +162,62 @@ func downloadTempFile(url string) error {
 }
 
 func extractTempFile() (string, error) {
+	homeDirectory, err := os.UserHomeDir()
+	if err != nil {
+		return "", err
+	}
 
 	file, err := os.Open("temp.tar.gz")
 	if err != nil {
 		return "", err
 	}
 
-	reader := tar.NewReader(file)
+	stream, err := gzip.NewReader(file)
+	if err != nil {
+		return "", err
+	}
+
+	var resultpath string
+
+	reader := tar.NewReader(stream)
 	var header *tar.Header
 	for header, err = reader.Next(); err == nil; header, err = reader.Next() {
+		path := filepath.Join(homeDirectory, COMPATIBILITY_TOOLS_DIRECTORY, header.Name)
 		switch header.Typeflag {
 		case tar.TypeDir:
-			if err := os.Mkdir(header.Name, 0755); err != nil {
-				return "", err
-			}
-		case tar.TypeReg:
-			outfile, err := os.Create(header.Name)
+			err := os.Mkdir(path, 0755)
 			if err != nil {
 				return "", err
 			}
-			if _, err := io.Copy(outfile, reader); err != nil {
+			if resultpath == "" {
+				resultpath = path
+			}
+		case tar.TypeReg, tar.TypeSymlink:
+			outfile, err := os.Create(path)
+			if err != nil {
+				return "", err
+			}
+			_, err = io.Copy(outfile, reader)
+			if err != nil {
 				outfile.Close()
 				return "", err
 			}
-			if err := outfile.Close(); err != nil {
+			err = outfile.Close()
+			if err != nil {
 				return "", err
 			}
 		default:
-			return "", errors.New("unknown tar type")
+			return "", errors.New("unknown tar type: " + header.Name + " " + string(header.Typeflag))
 		}
 	}
 
-	return "", nil
+	return resultpath, nil
+}
+
+func cleanupTempFile() error {
+	err := os.Remove("temp.tar.gz")
+	if err != nil {
+		return err
+	}
+	return nil
 }
