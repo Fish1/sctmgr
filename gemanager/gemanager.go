@@ -15,31 +15,6 @@ import (
 const COMPATIBILITY_TOOLS_DIRECTORY = "/.steam/steam/compatibilitytools.d/"
 const GE_GITHUB_URL = "https://api.github.com/repos/GloriousEggroll/proton-ge-custom/releases"
 
-type Asset struct {
-	Url                string `json:"url"`
-	BrowserDownloadUrl string `json:"browser_download_url"`
-	Id                 int    `json:"id"`
-	Name               string `json:"name"`
-	Size               int    `json:"size"`
-	CreatedAt          string `json:"created_at"`
-	UpdatedAt          string `json:"updated_at"`
-}
-
-type Release struct {
-	Url             string  `json:"url"`
-	HtmlUrl         string  `json:"html_url"`
-	AssetsUrl       string  `json:"assets_url"`
-	UploadUrl       string  `json:"upload_url"`
-	TarballUrl      string  `json:"tarball_url"`
-	ZipballUrl      string  `json:"zipball_url"`
-	Id              int     `json:"id"`
-	TagName         string  `json:"tag_name"`
-	TargetCommitish string  `json:"target_commitish"`
-	CreatedAt       string  `json:"created_at"`
-	UpdatedAt       string  `json:"updated_at"`
-	Assets          []Asset `json:"assets"`
-}
-
 func RemoteReleases() ([]Release, error) {
 	res, err := http.Get(GE_GITHUB_URL)
 	if err != nil {
@@ -58,11 +33,6 @@ func RemoteReleases() ([]Release, error) {
 	}
 
 	return releases, nil
-}
-
-type LocalRelease struct {
-	Name string
-	Path string
 }
 
 func LocalReleases() ([]LocalRelease, error) {
