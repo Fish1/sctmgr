@@ -3,7 +3,7 @@ package menu
 import (
 	"github.com/charmbracelet/bubbles/spinner"
 	tea "github.com/charmbracelet/bubbletea"
-	"github.com/fish1/ge-downloader/gemanager"
+	"github.com/fish1/sctmgr/gemgr"
 )
 
 func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
@@ -35,9 +35,12 @@ func handleKeyMsg(m Model, msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		}
 	case " ", "enter":
 		if s, ok := m.selected[m.cursor]; ok {
-			s.status = Delete
+			m.selected[m.cursor] = Selection{
+				status:   Delete,
+				localUri: s.localUri,
+			}
 			return m, func() tea.Msg {
-				err := gemanager.Delete(s.localUri)
+				err := gemgr.Delete(s.localUri)
 				if err != nil {
 					panic(err)
 				}
@@ -48,7 +51,7 @@ func handleKeyMsg(m Model, msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 				status: Download,
 			}
 			return m, func() tea.Msg {
-				filename, err := gemanager.Install(m.choices[m.cursor].downloadUrl)
+				filename, err := gemgr.Install(m.choices[m.cursor].downloadUrl)
 				if err != nil {
 					panic(err)
 				}

@@ -1,8 +1,10 @@
-package gemanager
+package gemgr
 
 import (
 	"archive/tar"
 	"compress/gzip"
+	"crypto/sha1"
+	"encoding/base64"
 	"encoding/json"
 	"errors"
 	"io"
@@ -15,44 +17,60 @@ import (
 const COMPATIBILITY_TOOLS_DIRECTORY = "/.steam/steam/compatibilitytools.d/"
 const GE_GITHUB_URL = "https://api.github.com/repos/GloriousEggroll/proton-ge-custom/releases"
 
-func RemoteReleases() ([]Release, error) {
+type RemoteReleaseResponse struct {
+	Releases []RemoteRelease
+	Err      error
+}
+
+func RemoteReleases(releasesChan chan RemoteReleaseResponse) {
 	res, err := http.Get(GE_GITHUB_URL)
 	if err != nil {
-		return []Release{}, err
+		releasesChan <- RemoteReleaseResponse{[]RemoteRelease{}, err}
+		return
 	}
 
 	body, err := io.ReadAll(res.Body)
 	if err != nil {
-		return []Release{}, err
+		releasesChan <- RemoteReleaseResponse{[]RemoteRelease{}, err}
+		return
 	}
 
-	var releases []Release
+	var releases []RemoteRelease
 	err = json.Unmarshal(body, &releases)
 	if err != nil {
-		return []Release{}, err
+		releasesChan <- RemoteReleaseResponse{[]RemoteRelease{}, err}
+		return
 	}
 
-	return releases, nil
+	releasesChan <- RemoteReleaseResponse{releases, nil}
 }
 
-func LocalReleases() ([]LocalRelease, error) {
+type LocalReleaseResponse struct {
+	Releases []LocalRelease
+	Err      error
+}
+
+func LocalReleases(releaseChan chan LocalReleaseResponse) {
 	results := []LocalRelease{}
 
 	homeDirectory, err := os.UserHomeDir()
 	if err != nil {
-		return []LocalRelease{}, err
+		releaseChan <- LocalReleaseResponse{[]LocalRelease{}, err}
+		return
 	}
 
 	directories, err := os.ReadDir(homeDirectory + COMPATIBILITY_TOOLS_DIRECTORY)
 	if err != nil {
-		return []LocalRelease{}, err
+		releaseChan <- LocalReleaseResponse{[]LocalRelease{}, err}
+		return
 	}
 
 	for _, directory := range directories {
 		if directory.IsDir() {
 			files, err := os.ReadDir(homeDirectory + COMPATIBILITY_TOOLS_DIRECTORY + directory.Name())
 			if err != nil {
-				return []LocalRelease{}, err
+				releaseChan <- LocalReleaseResponse{[]LocalRelease{}, err}
+				return
 			}
 			for _, file := range files {
 				if file.IsDir() == false && file.Name() == "version" {
@@ -60,11 +78,13 @@ func LocalReleases() ([]LocalRelease, error) {
 					path := folder + "/" + file.Name()
 					buffer, err := os.ReadFile(path)
 					if err != nil {
-						return []LocalRelease{}, err
+						releaseChan <- LocalReleaseResponse{[]LocalRelease{}, err}
+						return
 					}
 					fileData := strings.Split(string(buffer), " ")
 					if len(fileData) != 2 {
-						return []LocalRelease{}, errors.New("unable to read version file")
+						releaseChan <- LocalReleaseResponse{[]LocalRelease{}, err}
+						return
 					}
 					tag := strings.Trim(fileData[1], "\n")
 					results = append(results, LocalRelease{
@@ -76,7 +96,7 @@ func LocalReleases() ([]LocalRelease, error) {
 		}
 	}
 
-	return results, nil
+	releaseChan <- LocalReleaseResponse{results, nil}
 }
 
 func Delete(localUri string) error {
@@ -89,17 +109,23 @@ func Delete(localUri string) error {
 }
 
 func Install(remote string) (string, error) {
-	err := downloadTempFile(remote)
+
+	var bytes []byte
+	hasher := sha1.New()
+	hasher.Write(bytes)
+	filename := filepath.Join("/tmp/", base64.URLEncoding.EncodeToString(hasher.Sum([]byte(remote)))+".tar.gz")
+
+	err := downloadTempFile(remote, filename)
 	if err != nil {
 		return "", err
 	}
 
-	path, err := extractTempFile()
+	path, err := extractTempFile(filename)
 	if err != nil {
 		return "", err
 	}
 
-	err = cleanupTempFile()
+	err = cleanupTempFile(filename)
 	if err != nil {
 		return "", err
 	}
@@ -107,7 +133,7 @@ func Install(remote string) (string, error) {
 	return path, nil
 }
 
-func downloadTempFile(remote string) error {
+func downloadTempFile(remote string, destination string) error {
 	res, err := http.Get(remote)
 	if err != nil {
 		return err
@@ -118,7 +144,7 @@ func downloadTempFile(remote string) error {
 		return err
 	}
 
-	file, err := os.Create("temp.tar.gz")
+	file, err := os.Create(destination)
 	if err != nil {
 		return err
 	}
@@ -131,13 +157,13 @@ func downloadTempFile(remote string) error {
 	return nil
 }
 
-func extractTempFile() (string, error) {
+func extractTempFile(source string) (string, error) {
 	homeDirectory, err := os.UserHomeDir()
 	if err != nil {
 		return "", err
 	}
 
-	file, err := os.Open("temp.tar.gz")
+	file, err := os.Open(source)
 	if err != nil {
 		return "", err
 	}
@@ -184,8 +210,8 @@ func extractTempFile() (string, error) {
 	return resultpath, nil
 }
 
-func cleanupTempFile() error {
-	err := os.Remove("temp.tar.gz")
+func cleanupTempFile(source string) error {
+	err := os.Remove(source)
 	if err != nil {
 		return err
 	}

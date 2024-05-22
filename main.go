@@ -2,7 +2,7 @@ package main
 
 import (
 	tea "github.com/charmbracelet/bubbletea"
-	"github.com/fish1/ge-downloader/menu"
+	"github.com/fish1/sctmgr/menu"
 )
 
 func main() {

@@ -17,11 +17,9 @@ func (m Model) View() string {
 			if s.status == Download || s.status == Delete {
 				status = m.spinner.View()
 			} else {
-				status = "X"
+				status = "✓"
 			}
 			path = s.localUri
-		} else {
-			path = c.downloadUrl
 		}
 
 		s += fmt.Sprintf("%s [%s] %s\t\t%s\n", cursor, status, c.name, path)

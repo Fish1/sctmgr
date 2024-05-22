@@ -1,4 +1,4 @@
-package gemanager
+package gemgr
 
 type Asset struct {
 	Url                string `json:"url"`
@@ -10,7 +10,7 @@ type Asset struct {
 	UpdatedAt          string `json:"updated_at"`
 }
 
-type Release struct {
+type RemoteRelease struct {
 	Url             string  `json:"url"`
 	HtmlUrl         string  `json:"html_url"`
 	AssetsUrl       string  `json:"assets_url"`

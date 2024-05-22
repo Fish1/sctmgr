@@ -5,7 +5,7 @@ import (
 
 	"github.com/charmbracelet/bubbles/spinner"
 	tea "github.com/charmbracelet/bubbletea"
-	"github.com/fish1/ge-downloader/gemanager"
+	"github.com/fish1/sctmgr/gemgr"
 )
 
 func (m Model) Init() tea.Cmd {
@@ -13,20 +13,28 @@ func (m Model) Init() tea.Cmd {
 }
 
 func New() Model {
-	remote, err := gemanager.RemoteReleases()
-	if err != nil {
-		panic(err)
+	remoteChan := make(chan gemgr.RemoteReleaseResponse)
+	localChan := make(chan gemgr.LocalReleaseResponse)
+
+	go gemgr.RemoteReleases(remoteChan)
+	go gemgr.LocalReleases(localChan)
+
+	remote := <-remoteChan
+
+	if remote.Err != nil {
+		panic(remote.Err)
 	}
 
-	local, err := gemanager.LocalReleases()
-	if err != nil {
-		panic(err)
+	local := <-localChan
+
+	if local.Err != nil {
+		panic(local.Err)
 	}
 
 	choices := []Choice{}
 	selections := make(map[int]Selection)
 
-	for i, release := range remote {
+	for i, release := range remote.Releases {
 
 		downloadUrl := ""
 		for _, asset := range release.Assets {
@@ -42,7 +50,7 @@ func New() Model {
 
 		choices = append(choices, choice)
 
-		for _, local := range local {
+		for _, local := range local.Releases {
 			if local.Name == release.TagName {
 				selections[i] = Selection{
 					status:   Idle,
@@ -60,7 +68,7 @@ func New() Model {
 	}
 
 	m.spinner = spinner.New()
-	m.spinner.Spinner = spinner.Globe
+	m.spinner.Spinner = spinner.Points
 
 	return m
 }
