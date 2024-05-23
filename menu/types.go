@@ -1,13 +1,7 @@
 package menu
 
-import "github.com/charmbracelet/bubbles/spinner"
-
-type Status int64
-
-const (
-	Idle     Status = 0
-	Download Status = 1
-	Delete   Status = 2
+import (
+	"github.com/charmbracelet/bubbles/list"
 )
 
 type Choice struct {
@@ -21,9 +15,5 @@ type Selection struct {
 }
 
 type Model struct {
-	header   string
-	choices  []Choice
-	cursor   int
-	selected map[int]Selection
-	spinner  spinner.Model
+	list list.Model
 }

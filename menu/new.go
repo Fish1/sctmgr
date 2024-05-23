@@ -3,13 +3,13 @@ package menu
 import (
 	"strings"
 
-	"github.com/charmbracelet/bubbles/spinner"
+	"github.com/charmbracelet/bubbles/list"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/fish1/sctmgr/gemgr"
 )
 
 func (m Model) Init() tea.Cmd {
-	return m.spinner.Tick
+	return nil
 }
 
 func New() Model {
@@ -31,44 +31,43 @@ func New() Model {
 		panic(local.Err)
 	}
 
-	choices := []Choice{}
-	selections := make(map[int]Selection)
+	items := []list.Item{}
+	for _, release := range remote.Releases {
 
-	for i, release := range remote.Releases {
-
-		downloadUrl := ""
+		remotePath := ""
 		for _, asset := range release.Assets {
 			if strings.Contains(asset.Name, "GE-Proton") && strings.Contains(asset.Name, ".tar.gz") {
-				downloadUrl = asset.BrowserDownloadUrl
+				remotePath = asset.BrowserDownloadUrl
 			}
 		}
 
-		choice := Choice{
-			name:        release.TagName,
-			downloadUrl: downloadUrl,
-		}
-
-		choices = append(choices, choice)
-
+		localPath := ""
 		for _, local := range local.Releases {
 			if local.Name == release.TagName {
-				selections[i] = Selection{
-					status:   Idle,
-					localUri: local.Path,
-				}
-				break
+				localPath = local.Path
 			}
 		}
+
+		status := None
+		if localPath != "" {
+			status = Downloaded
+		}
+
+		geitem := GEItem{
+			name:       release.TagName,
+			localPath:  localPath,
+			remotePath: remotePath,
+			status:     status,
+		}
+		items = append(items, item(geitem))
 	}
+
+	list := list.New(items, itemDelegate{}, 40, 20)
+	list.Title = "Glorious Eggroll Releases"
 
 	m := Model{
-		header:   "Choose a GE release to install",
-		choices:  choices,
-		selected: selections,
+		list: list,
 	}
-
-	m.spinner = spinner.New()
-	m.spinner.Spinner = spinner.Points
 
 	return m
 }

@@ -11,7 +11,6 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
-	"strings"
 )
 
 const COMPATIBILITY_TOOLS_DIRECTORY = "/.steam/steam/compatibilitytools.d/"
@@ -67,32 +66,10 @@ func LocalReleases(releaseChan chan LocalReleaseResponse) {
 
 	for _, directory := range directories {
 		if directory.IsDir() {
-			files, err := os.ReadDir(homeDirectory + COMPATIBILITY_TOOLS_DIRECTORY + directory.Name())
-			if err != nil {
-				releaseChan <- LocalReleaseResponse{[]LocalRelease{}, err}
-				return
-			}
-			for _, file := range files {
-				if file.IsDir() == false && file.Name() == "version" {
-					folder := homeDirectory + COMPATIBILITY_TOOLS_DIRECTORY + directory.Name()
-					path := folder + "/" + file.Name()
-					buffer, err := os.ReadFile(path)
-					if err != nil {
-						releaseChan <- LocalReleaseResponse{[]LocalRelease{}, err}
-						return
-					}
-					fileData := strings.Split(string(buffer), " ")
-					if len(fileData) != 2 {
-						releaseChan <- LocalReleaseResponse{[]LocalRelease{}, err}
-						return
-					}
-					tag := strings.Trim(fileData[1], "\n")
-					results = append(results, LocalRelease{
-						Name: tag,
-						Path: folder,
-					})
-				}
-			}
+			results = append(results, LocalRelease{
+				Name: directory.Name(),
+				Path: homeDirectory + COMPATIBILITY_TOOLS_DIRECTORY + directory.Name(),
+			})
 		}
 	}
 
