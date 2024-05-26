@@ -2,18 +2,10 @@ package menu
 
 import (
 	"github.com/charmbracelet/bubbles/list"
+	"github.com/charmbracelet/bubbles/spinner"
 )
 
-type Choice struct {
-	name        string
-	downloadUrl string
-}
-
-type Selection struct {
-	status   Status
-	localUri string
-}
-
 type Model struct {
-	list list.Model
+	list    list.Model
+	spinner spinner.Model
 }

@@ -6,7 +6,6 @@ import (
 	"crypto/sha1"
 	"encoding/base64"
 	"encoding/json"
-	"errors"
 	"io"
 	"net/http"
 	"os"
@@ -156,8 +155,9 @@ func extractTempFile(source string) (string, error) {
 	var header *tar.Header
 	for header, err = reader.Next(); err == nil; header, err = reader.Next() {
 		path := filepath.Join(homeDirectory, COMPATIBILITY_TOOLS_DIRECTORY, header.Name)
-		switch header.Typeflag {
-		case tar.TypeDir:
+		info := header.FileInfo()
+
+		if info.IsDir() {
 			err := os.Mkdir(path, 0755)
 			if err != nil {
 				return "", err
@@ -165,22 +165,17 @@ func extractTempFile(source string) (string, error) {
 			if resultpath == "" {
 				resultpath = path
 			}
-		case tar.TypeReg, tar.TypeSymlink:
-			outfile, err := os.Create(path)
+		} else {
+			outfile, err := os.OpenFile(path, os.O_CREATE|os.O_TRUNC|os.O_WRONLY, info.Mode())
 			if err != nil {
 				return "", err
 			}
+			defer outfile.Close()
 			_, err = io.Copy(outfile, reader)
 			if err != nil {
 				outfile.Close()
 				return "", err
 			}
-			err = outfile.Close()
-			if err != nil {
-				return "", err
-			}
-		default:
-			return "", errors.New("unknown tar type: " + header.Name + " " + string(header.Typeflag))
 		}
 	}
 

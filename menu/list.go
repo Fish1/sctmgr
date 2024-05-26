@@ -5,6 +5,7 @@ import (
 	"io"
 
 	"github.com/charmbracelet/bubbles/list"
+	"github.com/charmbracelet/bubbles/spinner"
 	tea "github.com/charmbracelet/bubbletea"
 )
 
@@ -26,36 +27,39 @@ type GEItem struct {
 
 type item GEItem
 
-func (i item) FilterValue() string { return "" }
+func (i item) FilterValue() string { return i.name }
 
-type itemDelegate struct{}
+type itemDelegate struct {
+	spinner *spinner.Model
+}
 
 func (d itemDelegate) Height() int                               { return 1 }
 func (d itemDelegate) Spacing() int                              { return 0 }
 func (d itemDelegate) Update(msg tea.Msg, m *list.Model) tea.Cmd { return nil }
 
 func (d itemDelegate) Render(w io.Writer, m list.Model, index int, listItem list.Item) {
-	i, ok := listItem.(item)
+	item, ok := listItem.(item)
 	if !ok {
 		return
 	}
+
 	cursor := " "
 	if index == m.Index() {
 		cursor = ">"
 	}
 
 	var status string
-	switch i.status {
+	switch item.status {
 	case None:
 		status = " "
 	case Downloaded:
 		status = "X"
 	case Downloading:
-		status = "D"
+		status = d.spinner.View()
 	case Deleteing:
-		status = "d"
+		status = d.spinner.View()
 	}
 
-	str := fmt.Sprintf("%s [%s] %s\t\t\t%s", cursor, status, i.name, i.localPath)
+	str := fmt.Sprintf("%s [%s] %s \t\t\t%s", cursor, status, item.name, item.localPath)
 	fmt.Fprintf(w, "%s", str)
 }

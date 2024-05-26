@@ -1,6 +1,7 @@
 package menu
 
 import (
+	"github.com/charmbracelet/bubbles/spinner"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/fish1/sctmgr/gemgr"
 )
@@ -12,16 +13,25 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		if cmd != nil {
 			return m, cmd
 		}
+	case spinner.TickMsg:
+		return handleSpinnerTick(m, msg)
 	case DoneDelete:
 		return handleDoneDelete(m, msg)
 	case DoneDownload:
 		return handleDoneDownload(m, msg)
-	default:
-		return m, nil
 	}
 
 	var cmd tea.Cmd
 	m.list, cmd = m.list.Update(msg)
+	return m, cmd
+}
+
+func handleSpinnerTick(m Model, msg spinner.TickMsg) (tea.Model, tea.Cmd) {
+	var cmd tea.Cmd
+	m.spinner, cmd = m.spinner.Update(msg)
+	m.list.SetDelegate(itemDelegate{
+		spinner: &m.spinner,
+	})
 	return m, cmd
 }
 

@@ -4,12 +4,13 @@ import (
 	"strings"
 
 	"github.com/charmbracelet/bubbles/list"
+	"github.com/charmbracelet/bubbles/spinner"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/fish1/sctmgr/gemgr"
 )
 
 func (m Model) Init() tea.Cmd {
-	return nil
+	return m.spinner.Tick
 }
 
 func New() Model {
@@ -62,11 +63,15 @@ func New() Model {
 		items = append(items, item(geitem))
 	}
 
-	list := list.New(items, itemDelegate{}, 40, 20)
+	s := spinner.New()
+	s.Spinner = spinner.Points
+
+	list := list.New(items, itemDelegate{spinner: &s}, 40, 20)
 	list.Title = "Glorious Eggroll Releases"
 
 	m := Model{
-		list: list,
+		list:    list,
+		spinner: s,
 	}
 
 	return m
