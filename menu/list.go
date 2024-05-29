@@ -1,6 +1,7 @@
 package menu
 
 import (
+	"context"
 	"fmt"
 	"io"
 
@@ -23,6 +24,7 @@ type GEItem struct {
 	localPath  string
 	remotePath string
 	status     Status
+	cancel     context.CancelFunc
 }
 
 type item GEItem
@@ -45,7 +47,11 @@ func (d itemDelegate) Render(w io.Writer, m list.Model, index int, listItem list
 
 	cursor := " "
 	if index == m.Index() {
-		cursor = ">"
+		if item.status == Downloaded || item.status == Downloading {
+			cursor = "x"
+		} else {
+			cursor = ">"
+		}
 	}
 
 	var status string

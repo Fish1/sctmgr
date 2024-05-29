@@ -2,7 +2,9 @@ package gemgr
 
 import (
 	"archive/tar"
+	"bytes"
 	"compress/gzip"
+	"context"
 	"crypto/sha1"
 	"encoding/base64"
 	"encoding/json"
@@ -10,6 +12,7 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"time"
 )
 
 const COMPATIBILITY_TOOLS_DIRECTORY = "/.steam/steam/compatibilitytools.d/"
@@ -84,14 +87,13 @@ func Delete(localUri string) error {
 	return nil
 }
 
-func Install(remote string) (string, error) {
-
+func Install(remote string, ctx context.Context) (string, error) {
 	var bytes []byte
 	hasher := sha1.New()
 	hasher.Write(bytes)
 	filename := filepath.Join("/tmp/", base64.URLEncoding.EncodeToString(hasher.Sum([]byte(remote)))+".tar.gz")
 
-	err := downloadTempFile(remote, filename)
+	err := downloadTempFile(remote, filename, ctx)
 	if err != nil {
 		return "", err
 	}
@@ -109,8 +111,18 @@ func Install(remote string) (string, error) {
 	return path, nil
 }
 
-func downloadTempFile(remote string, destination string) error {
-	res, err := http.Get(remote)
+func downloadTempFile(remote string, destination string, ctx context.Context) error {
+	bodyReader := bytes.NewBuffer([]byte(""))
+	req, err := http.NewRequestWithContext(ctx, "GET", remote, bodyReader)
+	if err != nil {
+		return err
+	}
+
+	client := http.Client{
+		Timeout: 30 * time.Second,
+	}
+
+	res, err := client.Do(req)
 	if err != nil {
 		return err
 	}
