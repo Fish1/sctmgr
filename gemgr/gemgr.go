@@ -9,6 +9,7 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"io"
+	"log/slog"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -167,27 +168,57 @@ func extractTempFile(source string) (string, error) {
 	var header *tar.Header
 	for header, err = reader.Next(); err == nil; header, err = reader.Next() {
 		path := filepath.Join(homeDirectory, COMPATIBILITY_TOOLS_DIRECTORY, header.Name)
-		info := header.FileInfo()
+		// info := header.FileInfo()
 
-		if info.IsDir() {
-			err := os.Mkdir(path, 0755)
+		slog.Debug(header.Linkname)
+
+		switch header.Typeflag {
+		case tar.TypeDir:
+			err := os.MkdirAll(path, os.FileMode(header.Mode))
 			if err != nil {
 				return "", err
 			}
 			if resultpath == "" {
 				resultpath = path
 			}
-		} else {
-			outfile, err := os.OpenFile(path, os.O_CREATE|os.O_TRUNC|os.O_WRONLY, info.Mode())
+
+		case tar.TypeReg:
+			err := os.MkdirAll(filepath.Dir(path), os.ModePerm)
 			if err != nil {
 				return "", err
 			}
-			defer outfile.Close()
-			_, err = io.Copy(outfile, reader)
+
+			file, err := os.Create(path)
 			if err != nil {
-				outfile.Close()
 				return "", err
 			}
+			defer file.Close()
+
+			_, err = io.Copy(file, reader)
+			if err != nil {
+				return "", err
+			}
+
+			err = os.Chmod(path, os.FileMode(header.Mode))
+			if err != nil {
+				return "", err
+			}
+
+			/*
+				outfile, err := os.OpenFile(path, os.O_CREATE|os.O_TRUNC|os.O_WRONLY, info.Mode())
+				if err != nil {
+					return "", err
+				}
+				defer outfile.Close()
+				_, err = io.Copy(outfile, reader)
+				if err != nil {
+					outfile.Close()
+					return "", err
+				}
+			*/
+
+		case tar.TypeSymlink:
+			os.Symlink(header.Linkname, path)
 		}
 	}
 

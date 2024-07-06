@@ -1,4 +1,4 @@
-package menu
+package gemgrscreen
 
 import (
 	"github.com/charmbracelet/bubbles/list"
