@@ -9,7 +9,6 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"io"
-	"log/slog"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -168,11 +167,9 @@ func extractTempFile(source string) (string, error) {
 	var header *tar.Header
 	for header, err = reader.Next(); err == nil; header, err = reader.Next() {
 		path := filepath.Join(homeDirectory, COMPATIBILITY_TOOLS_DIRECTORY, header.Name)
-		// info := header.FileInfo()
-
-		slog.Debug(header.Linkname)
 
 		switch header.Typeflag {
+
 		case tar.TypeDir:
 			err := os.MkdirAll(path, os.FileMode(header.Mode))
 			if err != nil {
@@ -203,19 +200,6 @@ func extractTempFile(source string) (string, error) {
 			if err != nil {
 				return "", err
 			}
-
-			/*
-				outfile, err := os.OpenFile(path, os.O_CREATE|os.O_TRUNC|os.O_WRONLY, info.Mode())
-				if err != nil {
-					return "", err
-				}
-				defer outfile.Close()
-				_, err = io.Copy(outfile, reader)
-				if err != nil {
-					outfile.Close()
-					return "", err
-				}
-			*/
 
 		case tar.TypeSymlink:
 			os.Symlink(header.Linkname, path)
